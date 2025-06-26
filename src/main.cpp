@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
                                             "Usage:\n"
                                             "  deej-ai --scan <paths> --model <path> --vec-dir <path> [options]\n"
                                             "  deej-ai --generate <method> --input <song1> --input <song2> ... --vec-dir <path> [options]\n\n"
-                                            "Exactly one of --scan or --generate must be used.\n");
+                                            "At least one of --scan or --generate must be used.\n");
         options.add_options()("h,help", "Show help");
         options.add_options()("scan", "Scan mode. Requires one or more scan paths.", cxxopts::value<std::vector<std::string>>());
         options.add_options()("generate", "Generate mode. Requires the method ('append', 'connect' or 'cluster').\n\n"
