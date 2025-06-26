@@ -31,11 +31,11 @@ sudo apt install libavcodec-dev libavformat-dev libavutil-dev libswresample-dev
 cmake -B build -G Ninja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release
 ninja -C build deej-ai
 ```
-To get a portable package build the **package_zip** target instead:
+To get a portable package build the **package** target instead:
 ```bash
-ninja -C build package_zip
+ninja -C build package
 ```
-The bundle is exported in the `package` folder.
+The bundle is exported in the `package` folder. Use target **package_zip** to also zip the output.
 ### Download a model
 You can download a ready to go ONNX deej-ai model or use the scipts in the [Deej-AI](https://github.com/teticio/Deej-AI) repository to covert your existing model to ONNX.
 ```bash
