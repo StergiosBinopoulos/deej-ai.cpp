@@ -1,0 +1,8 @@
+build
+package
+compile_commands.json
+deej-ai.onnx
+.clang-tidy
+.clang-format
+.cache
+.vscode
