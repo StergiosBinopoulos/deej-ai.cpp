@@ -150,14 +150,16 @@ bool scanner::scan(const std::vector<std::string> &paths) {
 
     const int total_files = files.size();
     int current = 0;
+    int files_scanned = 0;
     for (const auto &file : files) {
         current++;
         std::filesystem::path vec_file = std::filesystem::path(m_save_directory) / utils::scanned_filename(file.string());
         if (!(std::filesystem::exists(vec_file) && std::filesystem::is_regular_file(vec_file))) {
             scan_file(file.string());
-        }
-        if (current % 5 == 0) {
-            std::cout << "Scanning progress: " << current << "/" << total_files << std::endl;
+            if (files_scanned % 10 == 0) {
+                std::cout << "Scanning progress: " << current << " / " << total_files << std::endl;
+            }
+            files_scanned++;
         }
     }
 

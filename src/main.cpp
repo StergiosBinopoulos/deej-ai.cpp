@@ -113,7 +113,9 @@ int main(int argc, char *argv[]) {
             deejai::scanner deejai_scanner(model, vec_dir);
             deejai_scanner.set_batch_size(batch_size);
             deejai_scanner.set_epsilon(epsilon);
-            deejai_scanner.scan(scan_inputs);
+            if (deejai_scanner.scan(scan_inputs)) {
+                std::cout << "Scan completed successfully." << std::endl;
+            }
         }
 
         if (isGenerate) {
