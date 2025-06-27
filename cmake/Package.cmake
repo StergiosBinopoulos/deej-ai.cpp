@@ -19,7 +19,12 @@ elseif(UNIX)
 endif()
 
 string(TOLOWER "${PROJECT_NAME}" APP_NAME)
-set(PACKAGE_DIR "${PACKAGES_DIR}/${APP_NAME}-${APP_VERSION}-${PACKAGE_ARCH}")
+
+if(NOT PACKAGE_NAME)
+    set(PACKAGE_NAME "${APP_NAME}-${APP_VERSION}-${PACKAGE_ARCH}")
+endif()
+
+set(PACKAGE_DIR "${PACKAGES_DIR}/${PACKAGE_NAME}")
 
 add_custom_target(package
     COMMENT "Packaging deej-ai"
