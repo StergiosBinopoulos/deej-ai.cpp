@@ -94,7 +94,7 @@ else()
     set(ONNX_SO "libonnxruntime.so")
 endif()
 set(ONNX_RUNTIME_SHARED_LIB "${ONNX_RUNTIME_LIB_DIR}/${ONNX_SO}")
-message(${ONNX_SO})
+
 # Register as an imported target
 add_library(onnxruntime SHARED IMPORTED GLOBAL)
 set_target_properties(onnxruntime PROPERTIES
