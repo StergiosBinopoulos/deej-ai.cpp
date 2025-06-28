@@ -157,7 +157,7 @@ bool scanner::scan(const std::vector<std::string> &paths) {
         if (!(std::filesystem::exists(vec_file) && std::filesystem::is_regular_file(vec_file))) {
             scan_file(file.string());
             if (files_scanned % 10 == 0) {
-                std::cout << "Scanning progress: " << current << " / " << total_files << std::endl;
+                std::cout << "Scan progress: " << current << " / " << total_files << std::endl;
             }
             files_scanned++;
         }
