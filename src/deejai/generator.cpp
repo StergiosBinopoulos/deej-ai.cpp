@@ -81,13 +81,13 @@ std::vector<std::string> generator::generate_playlist_connect(
 
     std::vector<std::string> playlist;
     std::unordered_set<std::string> seen;
+    seen.insert(seed_tracks.begin(), seed_tracks.end());
+    playlist.push_back(seed_tracks[0]);
 
     for (size_t t = 1; t < seed_tracks.size(); t++) {
         const std::string &start = seed_tracks[t - 1];
         const std::string &end = seed_tracks[t];
 
-        playlist.push_back(start);
-        seen.insert(start);
         for (int i = 0; i < nsongs; i++) {
             float alpha =
                 static_cast<float>(nsongs - i + 1) / static_cast<float>(nsongs + 1);
