@@ -12,6 +12,16 @@ static int error_exit_main(const char *error) {
     return 1;
 }
 
+static std::vector<std::string> get_vector_option(const cxxopts::ParseResult &result, const std::string &key) {
+    std::vector<std::string> vec;
+    for (auto &opt : result) {
+        if (opt.key() == key) {
+            vec.push_back(opt.value());
+        }
+    }
+    return vec;
+}
+
 int main(int argc, char *argv[]) {
     try {
         // Identation is messed up due to clang-format, too lazy to fix it
@@ -23,7 +33,7 @@ int main(int argc, char *argv[]) {
                                             "  deej-ai --generate <method> --input <song1> --input <song2> ... --vec-dir <path> [options]\n\n"
                                             "At least one of --scan or --generate must be used.\n");
         options.add_options()("h,help", "Show help");
-        options.add_options()("scan", "Scan mode. Requires one or more scan paths.", cxxopts::value<std::vector<std::string>>());
+        options.add_options()("scan", "Scan mode. Requires one or more scan paths.", cxxopts::value<std::string>());
         options.add_options()("generate", "Generate mode. Requires the method ('append', 'connect' or 'cluster').\n\n"
                                           "-'append': Appends songs at the end of the input, taking into account the last n-songs specified by the 'lookback'.\n\n"
                                           "-'connect': Connects the input songs (if only one song is provided, 'append' will be used instead.)\n\n"
@@ -38,7 +48,7 @@ int main(int argc, char *argv[]) {
         options.add_options("Scan")("e,epsilon", "Epsilon value.",
                                     cxxopts::value<double>()->default_value("0.001"));
         options.add_options("Generate")("i,input", "Input song path. This flag can be used multiple times.",
-                                        cxxopts::value<std::vector<std::string>>());
+                                        cxxopts::value<std::string>());
         options.add_options("Generate")("nsongs", "Number of songs in the playlist. (The number of songs connecting the inputs in 'connect' method.)",
                                         cxxopts::value<int>()->default_value("10"));
         options.add_options("Generate")("noise", "Noise level. Higher noise will result in greater randomness. "
@@ -105,7 +115,7 @@ int main(int argc, char *argv[]) {
 
         if (isScan) {
             std::string vec_dir = result["vec-dir"].as<std::string>();
-            std::vector<std::string> scan_inputs = result["scan"].as<std::vector<std::string>>();
+            std::vector<std::string> scan_inputs = get_vector_option(result, "scan");
             std::string model = result["model"].as<std::string>();
             int batch_size = result["batch-size"].as<int>();
             double epsilon = result["epsilon"].as<double>();
@@ -121,7 +131,7 @@ int main(int argc, char *argv[]) {
         if (isGenerate) {
             std::string method = result.count("generate") ? result["generate"].as<std::string>() : "";
             std::string vec_dir = result["vec-dir"].as<std::string>();
-            std::vector<std::string> input_songs = result["input"].as<std::vector<std::string>>();
+            std::vector<std::string> input_songs = get_vector_option(result, "input");
             int nsongs = result["nsongs"].as<int>();
             float noise = result["noise"].as<float>();
             int lookback = result["lookback"].as<int>();
