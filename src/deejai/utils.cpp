@@ -200,11 +200,65 @@ std::vector<std::filesystem::path> find_audio_files_recursively(const std::vecto
     return results;
 }
 
+// Helper to get the length of a UTF-8 character from its first byte
+static size_t utf8_char_length(unsigned char c) {
+    if ((c & 0x80) == 0x00)
+        return 1; // 0xxxxxxx
+    if ((c & 0xE0) == 0xC0)
+        return 2; // 110xxxxx
+    if ((c & 0xF0) == 0xE0)
+        return 3; // 1110xxxx
+    if ((c & 0xF8) == 0xF0)
+        return 4; // 11110xxx
+    return 1;     // Invalid, treat as 1 to prevent infinite loops
+}
+
+static bool is_valid_leading_byte(unsigned char c) {
+    return (c & 0xC0) != 0x80;
+}
+
+static std::string truncate_utf8(const std::string &input, size_t max_bytes) {
+    if (input.size() <= max_bytes)
+        return input;
+
+    size_t i = input.size();
+    size_t total_bytes = 0;
+
+    // We'll collect characters backward
+    while (i > 0) {
+        // Find the start of the previous UTF-8 character
+        size_t char_start = i - 1;
+        while (char_start > 0 && !is_valid_leading_byte(static_cast<unsigned char>(input[char_start]))) {
+            --char_start;
+        }
+
+        size_t char_len = utf8_char_length(static_cast<unsigned char>(input[char_start]));
+        if (char_start + char_len != i) {
+            // malformed character, skip
+            --i;
+            continue;
+        }
+
+        if (total_bytes + char_len > max_bytes)
+            break;
+
+        total_bytes += char_len;
+        i = char_start;
+    }
+
+    return input.substr(i);
+}
+
 std::string scanned_filename(const std::string &path) {
     std::string scanned_name = path + ".bin";
     std::replace(scanned_name.begin(), scanned_name.end(), '/', '_');
     std::replace(scanned_name.begin(), scanned_name.end(), '\\', '_');
     std::replace(scanned_name.begin(), scanned_name.end(), ':', '_');
+
+    // account for the max filename length (255 bytes is a safe length for most OS)
+    // this can be error prone, might need to add a hash in the filename to avoid conflicts
+    scanned_name = truncate_utf8(scanned_name, 255);
+
     return scanned_name;
 }
 
