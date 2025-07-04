@@ -85,10 +85,11 @@ audio_file_tensor scanner::tensor_from_audio(const std::string &audio_path) cons
             log_S = (log_S.array() - min_val) / denom;
         }
 
-        // Use shape: [1, n_mels, slice_size]
-        Eigen::TensorMap<Eigen::Tensor<float, 2>> tensor_slice(&x(slice, 0, 0, 0), n_mels, slice_size);
-        Eigen::TensorMap<Eigen::Tensor<const float, 2>> logS_tensor(log_S.data(), n_mels, slice_size);
-        tensor_slice = logS_tensor;
+        for (int xi = 0; xi < n_mels; xi++) {
+            for (int yi = 0; yi < slice_size; yi++) {
+                x(slice, 0, xi, yi) = log_S(xi, yi);
+            }
+        }
     }
 
     // Flatten the Eigen tensor to a 1D std::vector
