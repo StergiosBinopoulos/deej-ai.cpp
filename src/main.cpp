@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 
+#define MAX_ARGS 2000
+
 static int error_exit_main(const char *error) {
     std::cerr << "Error: " << error << "\nUse --help for usage.\n";
     return 1;
@@ -22,7 +24,48 @@ static std::vector<std::string> get_vector_option(const cxxopts::ParseResult &re
     return vec;
 }
 
+static int parse_args_file(const char *filename, char **argv_out, int max_args) {
+    FILE *stream = nullptr;
+    fopen_s(&stream, filename, "r");
+    if (!stream)
+        return -1;
+
+    int count = 0;
+    char buffer[1024];
+    while (fgets(buffer, sizeof(buffer), stream) && count < max_args) {
+        // Remove trailing newline
+        size_t len = strlen(buffer);
+        if (len > 0 && (buffer[len - 1] == '\n' || buffer[len - 1] == '\r'))
+            buffer[len - 1] = '\0';
+
+        // Only store non-empty lines
+        if (strlen(buffer) > 0) {
+            argv_out[count++] = _strdup(buffer);
+        }
+    }
+
+    fclose(stream);
+    return count;
+}
+
 int main(int argc, char *argv[]) {
+    char *new_argv[MAX_ARGS];
+    int new_argc = 0;
+
+    new_argv[new_argc++] = argv[0];
+    for (int i = 1; i < argc; i++) {
+        if (argv[i][0] == '@' && i == 1) {
+            int added = parse_args_file(argv[i] + 1, &new_argv[new_argc], MAX_ARGS - new_argc);
+            if (added < 0) {
+                std::cerr << "Failed to read args from " << argv[i] + 1 << std::endl;
+                return 1;
+            }
+            new_argc += added;
+        } else {
+            new_argv[new_argc++] = argv[i];
+        }
+    }
+
     try {
         // Identation is messed up due to clang-format, too lazy to fix it
         cxxopts::Options options("deej-ai", "Tool for generating playlists.\n"
@@ -60,7 +103,7 @@ int main(int argc, char *argv[]) {
                                                      "If no file is specified, the output will be printed instead.",
                                         cxxopts::value<std::string>()->default_value(""));
 
-        auto result = options.parse(argc, argv);
+        auto result = options.parse(new_argc, new_argv);
 
         const auto &unrec = result.unmatched();
         if (!unrec.empty()) {
