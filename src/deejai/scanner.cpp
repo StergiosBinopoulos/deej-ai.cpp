@@ -10,12 +10,24 @@
 #include <unsupported/Eigen/CXX11/Tensor>
 #include <vector>
 
+#ifdef _WIN32
+static std::wstring str_to_wstr(const std::string &str) {
+    std::wstring wstr(str.begin(), str.end());
+    return wstr;
+}
+#endif // _WIN32
+
 namespace deejai {
 
 scanner::scanner(const std::string &model_path, const std::string &save_directory) :
     m_env(ORT_LOGGING_LEVEL_WARNING, "ONNXModel"),
-    m_session(m_env, model_path.c_str(), m_session_options),
-    m_save_directory(save_directory) {}
+#ifdef _WIN32
+    m_session(m_env, str_to_wstr(model_path).c_str(), m_session_options),
+#else
+    m_session(m_env, model_path, m_session_options),
+#endif // _WIN32
+    m_save_directory(save_directory) {
+}
 
 std::vector<int64_t> scanner::input_shape() const {
     Ort::TypeInfo type_info = m_session.GetInputTypeInfo(0);
@@ -275,8 +287,8 @@ bool scanner::scan(const std::vector<std::string> &paths) {
         }
 
         const std::string batch_filename = std::string("batch_") + std::to_string(start_batch + batch) + ".bin";
-        const std::string batch_path = bundled_dir / batch_filename;
-        utils::save_matrix_map(batch_vec, batch_path);
+        const std::filesystem::path batch_path = bundled_dir / batch_filename;
+        utils::save_matrix_map(batch_vec, batch_path.string());
     }
 
     const bool save_status = utils::save_matrix_map(loaded_bundled_vecs, bundled_vecs_path.string());

@@ -1,7 +1,8 @@
+#include "deejai/utils.hpp"
 #include "deejai/common.hpp"
-#include "librosa.h"
 
 #include <Eigen/Dense>
+#include <cstdio>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -12,159 +13,49 @@
 #include <string>
 #include <vector>
 
-extern "C" {
-#include <libavcodec/avcodec.h>
-#include <libavformat/avformat.h>
-#include <libavutil/opt.h>
-#include <libswresample/swresample.h>
-}
-
 namespace deejai::utils {
 
-// The function converts the audio to mono channel
-static std::optional<vectorf> load_audio_internal(
-    const char *filename,
-    int sampling_rate,
-    AVFormatContext *fmt_ctx,
-    AVCodecContext *codec_ctx,
-    SwrContext *swr_ctx,
-    AVPacket *pkt,
-    AVFrame *frame) {
-    av_log_set_level(AV_LOG_ERROR);
-    if (avformat_open_input(&fmt_ctx, filename, nullptr, nullptr) < 0) {
-        std::cerr << "Could not open input file: " << filename << std::endl;
-        return std::nullopt;
-    }
-
-    if (avformat_find_stream_info(fmt_ctx, nullptr) < 0) {
-        std::cerr << "Could not find stream info: " << filename << std::endl;
-        return std::nullopt;
-    }
-
-    // Find audio stream
-    int audio_stream_index = -1;
-    for (unsigned i = 0; i < fmt_ctx->nb_streams; i++) {
-        if (fmt_ctx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO) {
-            audio_stream_index = i;
-            break;
-        }
-    }
-    if (audio_stream_index == -1) {
-        std::cerr << "No audio stream found: " << filename << std::endl;
-        return std::nullopt;
-    }
-
-    AVCodecParameters *codecpar = fmt_ctx->streams[audio_stream_index]->codecpar;
-    const AVCodec *codec = avcodec_find_decoder(codecpar->codec_id);
-    if (!codec) {
-        std::cerr << "Decoder not found: " << filename << std::endl;
-        return std::nullopt;
-    }
-
-    codec_ctx = avcodec_alloc_context3(codec);
-    if (!codec_ctx) {
-        std::cerr << "Failed to allocate codec context: " << filename << std::endl;
-        return std::nullopt;
-    }
-
-    if (avcodec_parameters_to_context(codec_ctx, codecpar) < 0) {
-        std::cerr << "Failed to copy codec params: " << filename << std::endl;
-        return std::nullopt;
-    }
-
-    if (avcodec_open2(codec_ctx, codec, nullptr) < 0) {
-        std::cerr << "Failed to open codec: " << filename << std::endl;
-        return std::nullopt;
-    }
-
-    // Prepare resampler
-    swr_ctx = swr_alloc();
-
-    av_opt_set_int(swr_ctx, "in_channel_layout", codec_ctx->ch_layout.u.mask, 0);
-    av_opt_set_int(swr_ctx, "out_channel_layout", AV_CH_LAYOUT_MONO, 0);
-    av_opt_set_int(swr_ctx, "in_sample_rate", codec_ctx->sample_rate, 0);
-    av_opt_set_int(swr_ctx, "out_sample_rate", sampling_rate, 0);
-    av_opt_set_sample_fmt(swr_ctx, "in_sample_fmt", codec_ctx->sample_fmt, 0);
-    av_opt_set_sample_fmt(swr_ctx, "out_sample_fmt", AV_SAMPLE_FMT_FLT,
-                          0); // float output
-
-    if (swr_init(swr_ctx) < 0) {
-        std::cerr << "Failed to initialize resampler: " << filename << std::endl;
-        return std::nullopt;
-    }
-
-    pkt = av_packet_alloc();
-    frame = av_frame_alloc();
-
-    std::vector<float> samples;
-
-    while (av_read_frame(fmt_ctx, pkt) >= 0) {
-        if (pkt->stream_index == audio_stream_index) {
-            if (avcodec_send_packet(codec_ctx, pkt) == 0) {
-                while (avcodec_receive_frame(codec_ctx, frame) == 0) {
-                    // Resample frame
-                    int dst_nb_samples = av_rescale_rnd(swr_get_delay(swr_ctx, codec_ctx->sample_rate) + frame->nb_samples,
-                                                        sampling_rate, codec_ctx->sample_rate, AV_ROUND_UP);
-                    float **dst_data = nullptr;
-
-                    int ret = av_samples_alloc_array_and_samples((uint8_t ***)&dst_data, nullptr, codec_ctx->ch_layout.nb_channels,
-                                                                 dst_nb_samples, AV_SAMPLE_FMT_FLT, 0);
-                    if (ret < 0) {
-                        std::cerr << "Could not allocate destination samples: " << filename << std::endl;
-                        return std::nullopt;
-                    }
-
-                    int nb_samples_resampled = swr_convert(swr_ctx, (uint8_t **)dst_data, dst_nb_samples,
-                                                           (const uint8_t **)frame->data, frame->nb_samples);
-
-                    if (nb_samples_resampled < 0) {
-                        std::cerr << "Error during resampling: " << filename << std::endl;
-                        av_freep(&dst_data[0]);
-                        av_freep(&dst_data);
-                        return std::nullopt;
-                    }
-
-                    int total_samples = nb_samples_resampled;
-                    for (int i = 0; i < total_samples; i++) {
-                        samples.push_back(dst_data[0][i]);
-                    }
-
-                    av_freep(&dst_data[0]);
-                    av_freep(&dst_data);
-                }
-            }
-        }
-        av_packet_unref(pkt);
-    }
-
-    // Convert samples vector to Eigen vector
-    vectorf eigen_samples = Eigen::Map<vectorf>(samples.data(), 1, samples.size());
-    return eigen_samples;
-}
-
+// The function loads the audio to mono channel
 std::optional<vectorf> load_audio(const char *filename, int sampling_rate) {
-    AVFormatContext *fmt_ctx = nullptr;
-    AVCodecContext *codec_ctx = nullptr;
-    SwrContext *swr_ctx = nullptr;
-    AVPacket *pkt = nullptr;
-    AVFrame *frame = nullptr;
-    auto ret = load_audio_internal(filename, sampling_rate, fmt_ctx, codec_ctx, swr_ctx, pkt, frame);
-    if (frame) {
-        av_frame_free(&frame);
+    std::vector<int16_t> samples;
+
+#ifdef _WIN32
+    std::string cmd = deejai::utils::FFMPEG_PATH + " -i \"" + std::string(filename) +
+                      "\" -f s16le -acodec pcm_s16le -ac 1 -ar " +
+                      std::to_string(sampling_rate) + " - 2>nul";
+    FILE *pipe = _popen(cmd.c_str(), "rb");
+#else
+    std::string cmd = deejai::utils::FFMPEG_PATH + " -i \"" + std::string(filename) +
+                      "\" -f s16le -acodec pcm_s16le -ac 1 -ar " +
+                      std::to_string(sampling_rate) + " - 2 > dev/null";
+    FILE *pipe = popen(cmd.c_str(), "r");
+#endif // _WIN32
+
+    if (!pipe)
+        throw std::runtime_error("Failed to open pipe to FFmpeg");
+
+    int16_t buffer[4096];
+    while (fread(buffer, sizeof(int16_t), 4096, pipe) > 0) {
+        samples.insert(samples.end(), buffer, buffer + 4096);
     }
-    if (pkt) {
-        av_packet_free(&pkt);
+
+    if (samples.empty()) {
+        std::cerr << "Couldn't load the audio file: " << filename << std::endl;
+        std::cerr << "Make sure that FFmpeg is installed and that the provided path points to an audio file." << std::endl;
+        return std::nullopt;
     }
-    if (swr_ctx) {
-        swr_free(&swr_ctx);
+
+#ifdef _WIN32
+    _pclose(pipe);
+#else
+    pclose(pipe);
+#endif // _WIN32
+
+    deejai::vectorf vec(samples.size());
+    for (size_t i = 0; i < samples.size(); ++i) {
+        vec[i] = samples[i] / 32768.0f; // Normalize to [-1, 1]
     }
-    if (codec_ctx) {
-        avcodec_free_context(&codec_ctx);
-    }
-    if (fmt_ctx) {
-        avformat_close_input(&fmt_ctx);
-    }
-    return ret;
+    return vec;
 }
 
 std::vector<std::filesystem::path> find_audio_files_recursively(const std::vector<std::string> &paths) {

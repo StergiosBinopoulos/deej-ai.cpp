@@ -5,13 +5,14 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O3 -Wall -Wextra -Wpedantic -fno-omit-frame-pointer -fcolor-diagnostics")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -flto")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3")
 
 set(BIN_DIR "${CMAKE_BINARY_DIR}/bin")
 set(LIB_DIR "${CMAKE_BINARY_DIR}/lib")
 set(DEPS_DIR "${CMAKE_BINARY_DIR}/_deps")
 
+file(MAKE_DIRECTORY ${BIN_DIR})
 file(MAKE_DIRECTORY ${LIB_DIR})
 file(MAKE_DIRECTORY ${DEPS_DIR})
 
@@ -27,8 +28,6 @@ include(cmake/FetchONNX.cmake)
 include(cmake/DeejAISources.cmake)
 
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(FFMPEG REQUIRED IMPORTED_TARGET
-    libavformat libavcodec libswresample libavutil)
 
 add_executable(deej-ai 
   src/main.cpp
@@ -47,7 +46,6 @@ set_target_properties(deej-ai PROPERTIES
 )
 
 target_link_libraries(deej-ai PRIVATE
-    PkgConfig::FFMPEG
     Eigen3::Eigen
     onnxruntime
 )

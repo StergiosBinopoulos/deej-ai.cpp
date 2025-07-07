@@ -49,14 +49,26 @@ add_custom_command(
     COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_SOURCE_DIR}/LICENSE" "${PACKAGE_DIR}/share/LICENSE"
 )
 
+# onnxruntime library
 if(WIN32)
+    # create the onnx license directory
     add_custom_command(
         TARGET package POST_BUILD
         WORKING_DIRECTORY ${PACKAGES_DIR}
-        COMMAND ${CMAKE_COMMAND} -E copy_directory ${LIB_DIR} "${PACKAGE_DIR}/lib"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${PACKAGE_DIR}/share/LICENSES/onnxruntime"
     )
-# use this instead of copy_directory to keep the symlinks
+
+    # copy the onnx license files
+    file(GLOB LICENSE_FILES "${ONNX_EXTRACT_DIR}/*")
+    foreach(file_path IN LISTS LICENSE_FILES)
+        add_custom_command(
+            TARGET package POST_BUILD
+            WORKING_DIRECTORY ${PACKAGES_DIR}
+            COMMAND ${CMAKE_COMMAND} -E copy "${file_path}" "${PACKAGE_DIR}/share/LICENSES/onnxruntime"
+        )
+    endforeach()
 else()
+    # use this instead of copy_directory to keep the symlinks
     add_custom_command(
         TARGET package POST_BUILD
         WORKING_DIRECTORY ${PACKAGES_DIR}

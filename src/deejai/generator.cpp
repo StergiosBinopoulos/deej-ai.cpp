@@ -12,7 +12,7 @@ namespace deejai {
 
 generator::generator(const std::string &vecs_dir) {
     const std::filesystem::path path = std::filesystem::path(vecs_dir) / BUNDLED_VECS_DIRNAME / BUNDLED_VECS_FILENAME;
-    auto temp_map = utils::load_matrix_map(path);
+    auto temp_map = utils::load_matrix_map(path.string());
     m_audio_vec = utils::matrix_to_vector(temp_map);
 }
 
