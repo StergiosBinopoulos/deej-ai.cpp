@@ -2,6 +2,7 @@
 #include "deejai/common.hpp"
 
 #include <Eigen/Dense>
+#include <cstdint>
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
@@ -10,14 +11,28 @@
 #include <optional>
 #include <ostream>
 #include <random>
+#include <regex>
 #include <string>
 #include <vector>
 
 namespace deejai::utils {
 
+static std::string espace_string_for_ffmpeg(const std::string &str) {
+    std::string espaced = str;
+#ifdef _WIN32
+#else
+    std::regex dollar("\\$");
+    espaced = std::regex_replace(espaced, dollar, "\\$");
+#endif // _WIN32
+    std::regex quote("`");
+    espaced = std::regex_replace(espaced, quote, "\\`");
+    return espaced;
+}
+
 // The function loads the audio to mono channel
 std::optional<vectorf> load_audio(const char *filename, int sampling_rate) {
     std::vector<int16_t> samples;
+    std::string input_filename = espace_string_for_ffmpeg(filename);
 
 #ifdef _WIN32
     std::string cmd = deejai::utils::FFMPEG_PATH + " -i \"" + std::string(filename) +
@@ -25,9 +40,9 @@ std::optional<vectorf> load_audio(const char *filename, int sampling_rate) {
                       std::to_string(sampling_rate) + " - 2>nul";
     FILE *pipe = _popen(cmd.c_str(), "rb");
 #else
-    std::string cmd = deejai::utils::FFMPEG_PATH + " -i \"" + std::string(filename) +
+    std::string cmd = deejai::utils::FFMPEG_PATH + " -i \"" + input_filename +
                       "\" -f s16le -acodec pcm_s16le -ac 1 -ar " +
-                      std::to_string(sampling_rate) + " - 2 > dev/null";
+                      std::to_string(sampling_rate) + " - 2>/dev/null";
     FILE *pipe = popen(cmd.c_str(), "r");
 #endif // _WIN32
 
@@ -53,8 +68,9 @@ std::optional<vectorf> load_audio(const char *filename, int sampling_rate) {
 
     deejai::vectorf vec(samples.size());
     for (size_t i = 0; i < samples.size(); ++i) {
-        vec[i] = samples[i] / 32768.0f; // Normalize to [-1, 1]
+        vec[i] = samples[i] / 32768.0f;
     }
+
     return vec;
 }
 
@@ -145,6 +161,7 @@ std::string scanned_filename(const std::string &path) {
     std::replace(scanned_name.begin(), scanned_name.end(), '/', '_');
     std::replace(scanned_name.begin(), scanned_name.end(), '\\', '_');
     std::replace(scanned_name.begin(), scanned_name.end(), ':', '_');
+    std::replace(scanned_name.begin(), scanned_name.end(), '?', '_');
 
     // account for the max filename length (255 bytes is a safe length for most OS)
     // this can be error prone, might need to add a hash in the filename to avoid conflicts

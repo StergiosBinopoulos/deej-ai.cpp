@@ -5,6 +5,7 @@
 #include <Eigen/Dense>
 #include <filesystem>
 #include <onnxruntime_cxx_api.h>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <unsupported/Eigen/CXX11/Tensor>
@@ -24,7 +25,7 @@ scanner::scanner(const std::string &model_path, const std::string &save_director
 #ifdef _WIN32
     m_session(m_env, str_to_wstr(model_path).c_str(), m_session_options),
 #else
-    m_session(m_env, model_path, m_session_options),
+    m_session(m_env, model_path.c_str(), m_session_options),
 #endif // _WIN32
     m_save_directory(save_directory) {
 }
@@ -63,7 +64,7 @@ bool scanner::is_batch_file(const std::string &path) {
     return path.starts_with("batch_") && path.ends_with(".bin");
 }
 
-audio_file_tensor scanner::tensor_from_audio(const std::string &audio_path) const {
+std::optional<audio_file_tensor> scanner::tensor_from_audio(const std::string &audio_path) const {
     const int sampling_rate = 22050;
     const int n_fft = 2048;
     const int hop_length = 512;
@@ -73,12 +74,12 @@ audio_file_tensor scanner::tensor_from_audio(const std::string &audio_path) cons
 
     auto vec = utils::load_audio(audio_path.c_str(), sampling_rate);
     if (!vec.has_value()) {
-        // skip
+        return std::nullopt;
     }
 
     auto vector = vec.value();
     if (vector.size() < slice_size) {
-        // skip
+        return std::nullopt;
     }
 
     matrixf S = librosa::internal::melspectrogram(vector, sampling_rate, n_fft, hop_length, "hann", true,
@@ -305,14 +306,17 @@ bool scanner::scan(const std::vector<std::string> &paths) {
 
 void scanner::scan_file(const std::string &path) {
     const auto tensor = tensor_from_audio(path);
-    std::vector<Ort::Value> prediction = predict(tensor);
+    if (!tensor.has_value()) {
+        return;
+    }
+    std::vector<Ort::Value> prediction = predict(*tensor);
 
     if (!prediction.empty()) {
         const std::string filename = utils::scanned_filename(path);
         const std::filesystem::path save_path = std::filesystem::path(m_save_directory) / filename;
 
         matrixf matrix = utils::ort_to_matrix(prediction[0]);
-        std::unordered_map<std::string, matrixf> map = {{tensor.audio_path, matrix}};
+        std::unordered_map<std::string, matrixf> map = {{tensor->audio_path, matrix}};
         utils::save_matrix_map(map, save_path.string());
     }
 }

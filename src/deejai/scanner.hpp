@@ -3,6 +3,7 @@
 #include "deejai/common.hpp"
 
 #include <onnxruntime_cxx_api.h>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -28,7 +29,7 @@ class scanner {
     std::vector<Ort::Value> predict(const audio_file_tensor &input_tensor);
 
     std::vector<int64_t> input_shape() const;
-    audio_file_tensor tensor_from_audio(const std::string &audio_path) const;
+    std::optional<audio_file_tensor> tensor_from_audio(const std::string &audio_path) const;
 
     void set_batch_size(int batch_size);
     int batch_size() const;
