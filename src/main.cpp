@@ -92,6 +92,8 @@ int main(int argc, char *argv[]) {
                                       cxxopts::value<std::string>());
         options.add_options("Scan")("m,model", "Path to the model file.",
                                     cxxopts::value<std::string>());
+        options.add_options("Scan")("ffmpeg", "Path to the ffmpeg library.",
+                                    cxxopts::value<std::string>()->default_value("ffmpeg"));
         options.add_options("Scan")("b,batch-size", "Batch size.",
                                     cxxopts::value<int>()->default_value("100"));
         options.add_options("Scan")("e,epsilon", "Epsilon value.",
@@ -177,6 +179,7 @@ int main(int argc, char *argv[]) {
         }
 
         if (isScan) {
+            deejai::utils::FFMPEG_PATH = result["ffmpeg"].as<std::string>();
             std::string vec_dir = result["vec-dir"].as<std::string>();
             std::vector<std::string> scan_inputs = get_vector_option(result, "scan");
             std::string model = result["model"].as<std::string>();
