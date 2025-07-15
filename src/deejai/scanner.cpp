@@ -5,17 +5,30 @@
 #include <Eigen/Dense>
 #include <filesystem>
 #include <onnxruntime_cxx_api.h>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <unsupported/Eigen/CXX11/Tensor>
 #include <vector>
 
+#ifdef _WIN32
+static std::wstring str_to_wstr(const std::string &str) {
+    std::wstring wstr(str.begin(), str.end());
+    return wstr;
+}
+#endif // _WIN32
+
 namespace deejai {
 
 scanner::scanner(const std::string &model_path, const std::string &save_directory) :
     m_env(ORT_LOGGING_LEVEL_WARNING, "ONNXModel"),
+#ifdef _WIN32
+    m_session(m_env, str_to_wstr(model_path).c_str(), m_session_options),
+#else
     m_session(m_env, model_path.c_str(), m_session_options),
-    m_save_directory(save_directory) {}
+#endif // _WIN32
+    m_save_directory(save_directory) {
+}
 
 std::vector<int64_t> scanner::input_shape() const {
     Ort::TypeInfo type_info = m_session.GetInputTypeInfo(0);
@@ -51,7 +64,7 @@ bool scanner::is_batch_file(const std::string &path) {
     return path.starts_with("batch_") && path.ends_with(".bin");
 }
 
-audio_file_tensor scanner::tensor_from_audio(const std::string &audio_path) const {
+std::optional<audio_file_tensor> scanner::tensor_from_audio(const std::string &audio_path) const {
     const int sampling_rate = 22050;
     const int n_fft = 2048;
     const int hop_length = 512;
@@ -61,12 +74,12 @@ audio_file_tensor scanner::tensor_from_audio(const std::string &audio_path) cons
 
     auto vec = utils::load_audio(audio_path.c_str(), sampling_rate);
     if (!vec.has_value()) {
-        // skip
+        return std::nullopt;
     }
 
     auto vector = vec.value();
     if (vector.size() < slice_size) {
-        // skip
+        return std::nullopt;
     }
 
     matrixf S = librosa::internal::melspectrogram(vector, sampling_rate, n_fft, hop_length, "hann", true,
@@ -275,8 +288,8 @@ bool scanner::scan(const std::vector<std::string> &paths) {
         }
 
         const std::string batch_filename = std::string("batch_") + std::to_string(start_batch + batch) + ".bin";
-        const std::string batch_path = bundled_dir / batch_filename;
-        utils::save_matrix_map(batch_vec, batch_path);
+        const std::filesystem::path batch_path = bundled_dir / batch_filename;
+        utils::save_matrix_map(batch_vec, batch_path.string());
     }
 
     const bool save_status = utils::save_matrix_map(loaded_bundled_vecs, bundled_vecs_path.string());
@@ -293,14 +306,17 @@ bool scanner::scan(const std::vector<std::string> &paths) {
 
 void scanner::scan_file(const std::string &path) {
     const auto tensor = tensor_from_audio(path);
-    std::vector<Ort::Value> prediction = predict(tensor);
+    if (!tensor.has_value()) {
+        return;
+    }
+    std::vector<Ort::Value> prediction = predict(*tensor);
 
     if (!prediction.empty()) {
         const std::string filename = utils::scanned_filename(path);
         const std::filesystem::path save_path = std::filesystem::path(m_save_directory) / filename;
 
         matrixf matrix = utils::ort_to_matrix(prediction[0]);
-        std::unordered_map<std::string, matrixf> map = {{tensor.audio_path, matrix}};
+        std::unordered_map<std::string, matrixf> map = {{tensor->audio_path, matrix}};
         utils::save_matrix_map(map, save_path.string());
     }
 }

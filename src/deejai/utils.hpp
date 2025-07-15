@@ -9,6 +9,8 @@
 
 namespace deejai::utils {
 
+inline std::string FFMPEG_PATH = "ffmpeg";
+
 std::optional<vectorf> load_audio(const char *filename, int sampling_rate);
 std::vector<std::filesystem::path> find_audio_files_recursively(const std::vector<std::string> &paths);
 std::string scanned_filename(const std::string &path);

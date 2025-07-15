@@ -35,23 +35,27 @@ else()
     message(FATAL_ERROR "Unsupported OS: ${CMAKE_SYSTEM_NAME}")
 endif()
 
-set(ONNX_RUNTIME_URL "https://github.com/microsoft/onnxruntime/releases/download/v${ONNX_RUNTIME_VERSION}/onnxruntime-${ONNX_ARCH}-${ONNX_RUNTIME_VERSION}.tgz")
-
 message(STATUS "Detected OS: ${CMAKE_SYSTEM_NAME}")
 message(STATUS "Detected Arch: ${CMAKE_SYSTEM_PROCESSOR}")
 message(STATUS "Resolved ONNX_ARCH: ${ONNX_ARCH}")
 
-set(ONNX_RUNTIME_URL "https://github.com/microsoft/onnxruntime/releases/download/v${ONNX_RUNTIME_VERSION}/onnxruntime-${ONNX_ARCH}-${ONNX_RUNTIME_VERSION}.tgz")
+if(WIN32)
+    set(ONNX_ARCHIVE_FILENAME "onnxruntime-${ONNX_ARCH}-${ONNX_RUNTIME_VERSION}.zip")
+else()
+    set(ONNX_ARCHIVE_FILENAME "onnxruntime-${ONNX_ARCH}-${ONNX_RUNTIME_VERSION}.tgz")
+endif()
 
-# Create the directory if it doesn't exist
-set(ONNX_ARCHIVE "${DEPS_DIR}/onnxruntime-${ONNX_ARCH}-${ONNX_RUNTIME_VERSION}.tgz")
+set(ONNX_RUNTIME_URL "https://github.com/microsoft/onnxruntime/releases/download/v${ONNX_RUNTIME_VERSION}/${ONNX_ARCHIVE_FILENAME}")
+
+
+set(ONNX_ARCHIVE "${DEPS_DIR}/${ONNX_ARCHIVE_FILENAME}")
 set(ONNX_EXTRACT_DIR "${LIB_DIR}/onnxruntime")
 
+# Create the directory if it doesn't exist
 file(MAKE_DIRECTORY ${DEPS_DIR})
 
 # Download archive
 if(NOT EXISTS ${ONNX_ARCHIVE})
-    set(ONNX_RUNTIME_URL "https://github.com/microsoft/onnxruntime/releases/download/v${ONNX_RUNTIME_VERSION}/onnxruntime-${ONNX_ARCH}-${ONNX_RUNTIME_VERSION}.tgz")
     message(STATUS "Downloading ONNX Runtime from ${ONNX_RUNTIME_URL}")
     file(DOWNLOAD
         ${ONNX_RUNTIME_URL}
@@ -67,7 +71,7 @@ if(NOT EXISTS ${ONNX_ARCHIVE})
 endif()
 
 # Extract to build/ (i.e., ${CMAKE_BINARY_DIR})
-if(NOT EXISTS ${ONNX_EXTRACT_DIR}/include)
+if(NOT EXISTS "${ONNX_EXTRACT_DIR}/include")
     message(STATUS "Extracting ONNX Runtime archive to ${LIB_DIR} ...")
     execute_process(
         COMMAND ${CMAKE_COMMAND} -E tar xzf ${ONNX_ARCHIVE}
@@ -101,3 +105,14 @@ set_target_properties(onnxruntime PROPERTIES
     IMPORTED_LOCATION "${ONNX_RUNTIME_SHARED_LIB}"
     INTERFACE_INCLUDE_DIRECTORIES "${ONNX_RUNTIME_INCLUDE_DIR}"
 )
+
+if(WIN32)
+    set_target_properties(onnxruntime PROPERTIES
+        IMPORTED_IMPLIB "${ONNX_RUNTIME_LIB_DIR}/onnxruntime.lib"
+    )
+
+    execute_process(
+        COMMAND ${CMAKE_COMMAND} -E copy "${ONNX_RUNTIME_SHARED_LIB}" "${BIN_DIR}"
+        WORKING_DIRECTORY ${BIN_DIR}
+    )
+endif()

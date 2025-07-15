@@ -29,6 +29,8 @@ class generator {
         const vectorf &vec_sum,
         int topn = 5) const;
 
+    std::vector<std::string> reorder(const std::vector<std::string> &seed_tracks, const std::string &first_song = "");
+
   private:
     bool remove_invalid_tracks(std::vector<std::string> &tracks) const;
     std::vector<std::string> generate_playlist_connect(

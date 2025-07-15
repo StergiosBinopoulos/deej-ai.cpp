@@ -5,7 +5,7 @@ A C++ implementation for inference of **Deej‑AI** models using **ONNX Runtime*
 
 ##  Overview
 
-**deej‑ai.cpp** is designed to be portable so the onnx runtime is bundled in the build. Running CMake will download Eigen and the prebuild ONNX Runtime. The only external requirement is the ffmpeg libraries. The playlist generation is much faster than the python version, the scan is also quite faster.
+**deej‑ai.cpp** is designed to be portable so the onnx runtime is bundled in the build. Running CMake will download Eigen and the prebuild ONNX Runtime. The only external requirement is the ffmpeg executable. The playlist generation is much faster than the python version, the scan is also quite faster.
 
 
 ## Prerequisites
@@ -13,22 +13,19 @@ A C++ implementation for inference of **Deej‑AI** models using **ONNX Runtime*
 - **C++20**
 - **CMake** ≥ 3.14
 - **Ninja**
-- **ffmpeg libraries**
+- **ffmpeg**
 
 ## Quick Start
 ### Build
 ```bash
 git clone https://github.com/StergiosBinopoulos/deej-ai.cpp
 cd deej-ai.cpp
-
-# Download the required libraries using your package manager
-# if you are using windows manually download the libraries and add them to $PATH
-sudo apt update
-sudo apt install libavcodec-dev libavformat-dev libavutil-dev libswresample-dev
-# or if you don't need the headers
-# sudo apt install libavcodec libavformat libavutil libswresample
-
-cmake -B build -G Ninja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release
+cmake -B build -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release
+ninja -C build deej-ai
+```
+on windows I suggest using MinGW and gcc:
+```bash
+cmake -B build -G Ninja -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_BUILD_TYPE=Release
 ninja -C build deej-ai
 ```
 To get a portable package build the **package** target instead:
@@ -37,10 +34,16 @@ ninja -C build package
 ```
 The bundle is exported in the `package` folder. Use target **package_zip** to also zip the output.
 ### Download a model
-You can download a ready to go ONNX deej-ai model or use the scipts in the [Deej-AI](https://github.com/teticio/Deej-AI) repository to covert your existing model to ONNX.
+You can download a ready to go ONNX deej-ai model or use the scipts in the [Deej-AI](https://github.com/teticio/Deej-AI) repository to convert your existing model to ONNX.
 ```bash
 curl -L https://huggingface.co/StergiosBinopoulos/deej-ai.onnx/resolve/main/deej-ai.onnx?download=true --output deej-ai.onnx
 ```
+Make sure you have ffmpeg installed
+```bash
+sudo apt update
+sudo apt install ffmpeg
+```
+If you are using windows download ffmpeg and add it to your PATH, or specify your ffmpeg executable path by using the --ffmpeg argument.
 ## Usage
 
 ### Scan your Libary
@@ -68,6 +71,11 @@ Example 3: Append 20 songs. Only determine the playlist from the original cluste
 ```bash
   build/bin/deej-ai --generate cluster --input <path_of_song_1> --input <path_of_song_2> --nsongs 20 --vec-dir test_folder
 ```
+Example 4: Reorder an existing playlist to improve the listening experience.
+```bash
+  build/bin/deej-ai --reorder --input <path_of_song_1> --input <path_of_song_2> ... --first <path_of_song_1>
+```
+
 
 Use -h to view all options:
 ```bash
