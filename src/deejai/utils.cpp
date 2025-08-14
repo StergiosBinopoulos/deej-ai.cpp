@@ -54,17 +54,17 @@ std::optional<vectorf> load_audio(const char *filename, int sampling_rate) {
         samples.insert(samples.end(), buffer, buffer + 4096);
     }
 
-    if (samples.empty()) {
-        std::cerr << "Couldn't load the audio file: " << filename << std::endl;
-        std::cerr << "Make sure that FFmpeg is installed and that the provided path points to an audio file." << std::endl;
-        return std::nullopt;
-    }
-
 #ifdef _WIN32
     _pclose(pipe);
 #else
     pclose(pipe);
 #endif // _WIN32
+
+    if (samples.empty()) {
+        std::cerr << "Couldn't load the audio file: " << filename << std::endl;
+        std::cerr << "Make sure that FFmpeg is installed and that the provided path points to an audio file." << std::endl;
+        return std::nullopt;
+    }
 
     deejai::vectorf vec(samples.size());
     for (size_t i = 0; i < samples.size(); ++i) {
