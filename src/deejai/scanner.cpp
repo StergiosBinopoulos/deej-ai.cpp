@@ -23,11 +23,18 @@ namespace deejai {
 scanner::scanner(const std::string &model_path, const std::string &save_directory) :
     m_env(ORT_LOGGING_LEVEL_WARNING, "ONNXModel"),
 #ifdef _WIN32
-    m_session(m_env, str_to_wstr(model_path).c_str(), m_session_options),
+    m_session(m_env, str_to_wstr(model_path).c_str(), session_options()),
 #else
-    m_session(m_env, model_path.c_str(), m_session_options),
+    m_session(m_env, model_path.c_str(), session_options()),
 #endif // _WIN32
     m_save_directory(save_directory) {
+}
+
+Ort::SessionOptions scanner::session_options() {
+    Ort::SessionOptions options;
+    options.DisableCpuMemArena();
+    options.DisableMemPattern();
+    return options;
 }
 
 std::vector<int64_t> scanner::input_shape() const {
@@ -38,11 +45,12 @@ std::vector<int64_t> scanner::input_shape() const {
 }
 
 std::vector<Ort::Value> scanner::predict(const audio_file_tensor &input_tensor) {
+    Ort::AllocatorWithDefaultOptions allocator;
     std::vector<Ort::AllocatedStringPtr> input_name_ptrs;
     std::vector<const char *> input_names;
     size_t num_inputs = m_session.GetInputCount();
     for (size_t i = 0; i < num_inputs; i++) {
-        input_name_ptrs.emplace_back(m_session.GetInputNameAllocated(i, m_allocator));
+        input_name_ptrs.emplace_back(m_session.GetInputNameAllocated(i, allocator));
         input_names.push_back(input_name_ptrs.back().get());
     }
 
@@ -50,7 +58,7 @@ std::vector<Ort::Value> scanner::predict(const audio_file_tensor &input_tensor) 
     std::vector<const char *> output_names;
     size_t num_outputs = m_session.GetOutputCount();
     for (size_t i = 0; i < num_outputs; i++) {
-        output_name_ptrs.emplace_back(m_session.GetOutputNameAllocated(i, m_allocator));
+        output_name_ptrs.emplace_back(m_session.GetOutputNameAllocated(i, allocator));
         output_names.push_back(output_name_ptrs.back().get());
     }
 
@@ -113,7 +121,7 @@ std::optional<audio_file_tensor> scanner::tensor_from_audio(const std::string &a
         static_cast<int64_t>(x.dimension(0)), static_cast<int64_t>(x.dimension(1)),
         static_cast<int64_t>(x.dimension(2)), static_cast<int64_t>(x.dimension(3))};
 
-    Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
+    Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeDefault);
     Ort::Value input_tensor = Ort::Value::CreateTensor<float>(memory_info, input_values.data(), input_values.size(),
                                                               input_shape.data(), input_shape.size());
 

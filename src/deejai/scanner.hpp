@@ -37,14 +37,14 @@ class scanner {
     double epsilon() const;
 
   private:
+    static Ort::SessionOptions session_options();
+
     void scan_file(const std::string &path);
     static bool is_batch_file(const std::string &path);
     void clean_deleted_items(std::unordered_map<std::string, matrixf> &audio_vecs) const;
 
     Ort::Env m_env;
-    Ort::SessionOptions m_session_options;
     Ort::Session m_session;
-    Ort::AllocatorWithDefaultOptions m_allocator;
 
     std::string m_save_directory;
 
