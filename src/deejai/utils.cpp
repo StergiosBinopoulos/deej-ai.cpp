@@ -50,8 +50,15 @@ std::optional<vectorf> load_audio(const char *filename, int sampling_rate) {
         throw std::runtime_error("Failed to open pipe to FFmpeg");
 
     int16_t buffer[4096];
+    const int max_sample_size = 12 * 60 * sampling_rate;
+    bool should_skip = false;
     while (fread(buffer, sizeof(int16_t), 4096, pipe) > 0) {
         samples.insert(samples.end(), buffer, buffer + 4096);
+        // skip audio files longer than 12 min to avoid running out of memory
+        if (samples.size() > max_sample_size) {
+            should_skip = true;
+            break;
+        }
     }
 
 #ifdef _WIN32
@@ -59,6 +66,10 @@ std::optional<vectorf> load_audio(const char *filename, int sampling_rate) {
 #else
     pclose(pipe);
 #endif // _WIN32
+
+    if (should_skip) {
+        return std::nullopt;
+    }
 
     if (samples.empty()) {
         std::cerr << "Couldn't load the audio file: " << filename << std::endl;
