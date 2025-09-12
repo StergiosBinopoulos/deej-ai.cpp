@@ -38,7 +38,7 @@ target_include_directories(deej-ai PRIVATE
 )
 
 if(APPLE)
-    set(BIN_ORIGIN "$@loader_path")
+    set(BIN_ORIGIN "@loader_path")
 else()
     set(BIN_ORIGIN "$ORIGIN")
 endif()
