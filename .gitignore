@@ -6,3 +6,4 @@ deej-ai.onnx
 .clang-format
 .cache
 .vscode
+.DS_Store

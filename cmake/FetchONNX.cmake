@@ -15,7 +15,7 @@ if(WIN32)
 
 elseif(APPLE)
     if(ARCH_LOWER MATCHES "arm64")
-        set(ONNX_ARCH "osx-arm64")
+        set(ONNX_ARCH "osx-universal2")
     elseif(ARCH_LOWER MATCHES "x86_64")
         set(ONNX_ARCH "osx-universal2")
     else()

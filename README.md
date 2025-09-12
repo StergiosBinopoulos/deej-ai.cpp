@@ -17,13 +17,19 @@ A C++ implementation for inference of **Deej‑AI** models using **ONNX Runtime*
 
 ## Quick Start
 ### Build
+Linux:
 ```bash
 git clone https://github.com/StergiosBinopoulos/deej-ai.cpp
 cd deej-ai.cpp
 cmake -B build -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release
 ninja -C build deej-ai
 ```
-on windows I suggest using MinGW and gcc:
+MacOS (Universal):
+```bash
+cmake -B build -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+ninja -C build deej-ai
+```
+On windows I suggest using MinGW and gcc:
 ```bash
 cmake -B build -G Ninja -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_BUILD_TYPE=Release
 ninja -C build deej-ai

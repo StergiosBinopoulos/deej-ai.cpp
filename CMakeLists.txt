@@ -17,7 +17,7 @@ file(MAKE_DIRECTORY ${LIB_DIR})
 file(MAKE_DIRECTORY ${DEPS_DIR})
 
 execute_process(
-    COMMAND ${CMAKE_COMMAND} -E create_symlink
+    COMMAND ${CMAKE_COMMAND} -E copy
         ${CMAKE_BINARY_DIR}/compile_commands.json
         ${CMAKE_SOURCE_DIR}/compile_commands.json
 )
@@ -26,8 +26,7 @@ execute_process(
 include(cmake/FetchEigen.cmake)
 include(cmake/FetchONNX.cmake)
 include(cmake/DeejAISources.cmake)
-
-find_package(PkgConfig REQUIRED)
+include(cmake/Package.cmake)
 
 add_executable(deej-ai 
   src/main.cpp
@@ -38,10 +37,16 @@ target_include_directories(deej-ai PRIVATE
   ${DEEJAI_INCLUDES}
 )
 
+if(APPLE)
+    set(BIN_ORIGIN "$@loader_path")
+else()
+    set(BIN_ORIGIN "$ORIGIN")
+endif()
+
 set_target_properties(deej-ai PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${BIN_DIR}
     BUILD_WITH_INSTALL_RPATH TRUE
-    INSTALL_RPATH "$ORIGIN/../lib/onnxruntime/lib"
+    INSTALL_RPATH ${BIN_ORIGIN}"/../lib/onnxruntime/lib"
     SKIP_BUILD_RPATH FALSE
 )
 
@@ -49,5 +54,3 @@ target_link_libraries(deej-ai PRIVATE
     Eigen3::Eigen
     onnxruntime
 )
-
-include(cmake/Package.cmake)
