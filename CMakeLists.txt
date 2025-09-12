@@ -46,7 +46,7 @@ endif()
 set_target_properties(deej-ai PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${BIN_DIR}
     BUILD_WITH_INSTALL_RPATH TRUE
-    INSTALL_RPATH ${BIN_ORIGIN}"/../lib/onnxruntime/lib"
+    INSTALL_RPATH ${BIN_ORIGIN}/../lib/onnxruntime/lib
     SKIP_BUILD_RPATH FALSE
 )
 
