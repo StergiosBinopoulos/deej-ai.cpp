@@ -1,7 +1,7 @@
 set(DEEJAI_SOURCES
-    src/deejai/utils.cpp
-    src/deejai/scanner.cpp
-    src/deejai/generator.cpp
+    ${CMAKE_SOURCE_DIR}/src/deejai/utils.cpp
+    ${CMAKE_SOURCE_DIR}/src/deejai/scanner.cpp
+    ${CMAKE_SOURCE_DIR}/src/deejai/generator.cpp
 )
 
 set(DEEJAI_INCLUDES

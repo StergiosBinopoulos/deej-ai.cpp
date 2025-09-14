@@ -1,4 +1,5 @@
 build
+build_static
 package
 compile_commands.json
 deej-ai.onnx
@@ -7,3 +8,4 @@ deej-ai.onnx
 .cache
 .vscode
 .DS_Store
+.onnxruntime-build

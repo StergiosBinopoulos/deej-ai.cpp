@@ -11,7 +11,7 @@ A C++ implementation for inference of **Deej‑AI** models using **ONNX Runtime*
 ## Prerequisites
 
 - **C++20**
-- **CMake** ≥ 3.14
+- **CMake** ≥ 3.15
 - **Ninja**
 - **ffmpeg**
 
@@ -29,7 +29,7 @@ MacOS (Universal):
 cmake -B build -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
 ninja -C build deej-ai
 ```
-On windows I suggest using MinGW and gcc:
+On Windows I suggest using MinGW and gcc:
 ```bash
 cmake -B build -G Ninja -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_BUILD_TYPE=Release
 ninja -C build deej-ai
@@ -39,6 +39,25 @@ To get a portable package build the **package** target instead:
 ninja -C build package
 ```
 The bundle is exported in the `package` folder. Use target **package_zip** to also zip the output.
+
+### Windows static build
+To build statically on Windows, you will need Visual Studio 2022 and Git Bash.
+Open Git Bash, navigate to the root directory, and run the following commands:
+```bash
+git clone https://github.com/supertone-inc/onnxruntime-build.git onnxruntime-build
+cd onnxruntime-build
+git checkout v1.22.2
+./build-static_lib.sh
+cd ..
+```
+after the onnxruntime static library build is completed you can configure the project and build:
+```bash
+cmake -B build_static -G "Visual Studio 17 2022" -DSTATIC_BUILD=ON
+cmake --build build_static --target deej-ai --config Release
+# or 
+# cmake --build build_static --target package --config Release
+```
+
 ### Download a model
 You can download a ready to go ONNX deej-ai model or use the scipts in the [Deej-AI](https://github.com/teticio/Deej-AI) repository to convert your existing model to ONNX.
 ```bash
@@ -49,7 +68,7 @@ Make sure you have ffmpeg installed
 sudo apt update
 sudo apt install ffmpeg
 ```
-If you are using windows download ffmpeg and add it to your PATH, or specify your ffmpeg executable path by using the --ffmpeg argument.
+If you are using Windows, download ffmpeg and add it to your PATH, or specify your ffmpeg executable path by using the --ffmpeg argument.
 ## Usage
 
 ### Scan your Libary

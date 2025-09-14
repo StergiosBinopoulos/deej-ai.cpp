@@ -13,7 +13,7 @@ endif()
 if(WIN32)
     set(PACKAGE_ARCH "win-${PACKAGE_ARCH}")
 elseif(APPLE)
-    set(PACKAGE_ARCH "macos-${PACKAGE_ARCH}")
+    set(PACKAGE_ARCH "macos-universal")
 elseif(UNIX)
     set(PACKAGE_ARCH "linux-${PACKAGE_ARCH}")
 endif()
@@ -21,7 +21,11 @@ endif()
 string(TOLOWER "${PROJECT_NAME}" APP_NAME)
 
 if(NOT PACKAGE_NAME)
-    set(PACKAGE_NAME "${APP_NAME}-${APP_VERSION}-${PACKAGE_ARCH}")
+    if (WIN32 AND STATIC_BUILD)
+        set(PACKAGE_NAME "${APP_NAME}-static-${APP_VERSION}-${PACKAGE_ARCH}")
+    else()
+        set(PACKAGE_NAME "${APP_NAME}-${APP_VERSION}-${PACKAGE_ARCH}")
+    endif()
 endif()
 
 set(PACKAGE_DIR "${PACKAGES_DIR}/${PACKAGE_NAME}")
@@ -57,16 +61,26 @@ if(WIN32)
         WORKING_DIRECTORY ${PACKAGES_DIR}
         COMMAND ${CMAKE_COMMAND} -E make_directory "${PACKAGE_DIR}/share/LICENSES/onnxruntime"
     )
-
-    # copy the onnx license files
-    file(GLOB LICENSE_FILES "${ONNX_EXTRACT_DIR}/*")
-    foreach(file_path IN LISTS LICENSE_FILES)
+    if (STATIC_BUILD)
         add_custom_command(
             TARGET package POST_BUILD
             WORKING_DIRECTORY ${PACKAGES_DIR}
-            COMMAND ${CMAKE_COMMAND} -E copy "${file_path}" "${PACKAGE_DIR}/share/LICENSES/onnxruntime"
+            COMMAND ${CMAKE_COMMAND} -E copy "${ONNX_STATIC_DIR}/LICENSE" "${PACKAGE_DIR}/share/LICENSES/onnxruntime/LICENSE"
+            COMMAND ${CMAKE_COMMAND} -E copy "${ONNX_STATIC_DIR}/ThirdPartyNotices.txt" "${PACKAGE_DIR}/share/LICENSES/onnxruntime/ThirdPartyNotices.txt"
+            COMMAND ${CMAKE_COMMAND} -E copy "${ONNX_STATIC_DIR}/VERSION_NUMBER" "${PACKAGE_DIR}/share/LICENSES/onnxruntime/VERSION_NUMBER"
+            COMMAND ${CMAKE_COMMAND} -E copy "${ONNX_STATIC_DIR}/README.md" "${PACKAGE_DIR}/share/LICENSES/onnxruntime/README.md"
         )
-    endforeach()
+    else()
+        # copy the onnx license files
+        file(GLOB LICENSE_FILES "${ONNX_EXTRACT_DIR}/*")
+        foreach(file_path IN LISTS LICENSE_FILES)
+            add_custom_command(
+                TARGET package POST_BUILD
+                WORKING_DIRECTORY ${PACKAGES_DIR}
+                COMMAND ${CMAKE_COMMAND} -E copy "${file_path}" "${PACKAGE_DIR}/share/LICENSES/onnxruntime"
+            )
+        endforeach()
+    endif()
 else()
     # use this instead of copy_directory to keep the symlinks
     add_custom_command(
