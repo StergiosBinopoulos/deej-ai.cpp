@@ -8,4 +8,4 @@ deej-ai.onnx
 .cache
 .vscode
 .DS_Store
-.onnxruntime-build
+onnxruntime-build
