@@ -14,28 +14,54 @@
 #include <regex>
 #include <string>
 #include <vector>
+#ifdef _WIN32
+#include <windows.h>
+#endif // _WIN32
 
 namespace deejai::utils {
 
-static std::string espace_string_for_ffmpeg(const std::string &str) {
-    std::string espaced = str;
+static std::string escape_string_for_ffmpeg(const std::string &str) {
+    std::string escaped = str;
 #ifdef _WIN32
+    std::replace(escaped.begin(), escaped.end(), '\\', '/');
+    std::regex space(" ");
+    escaped = std::regex_replace(escaped, space, "\\ ");
+    std::regex single_quote("'");
+    escaped = std::regex_replace(escaped, single_quote, "\\'");
+
 #else
     std::regex dollar("\\$");
-    espaced = std::regex_replace(espaced, dollar, "\\$");
+    escaped = std::regex_replace(escaped, dollar, "\\$");
 #endif // _WIN32
     std::regex quote("`");
-    espaced = std::regex_replace(espaced, quote, "\\`");
-    return espaced;
+    escaped = std::regex_replace(escaped, quote, "\\`");
+    return escaped;
+}
+
+static std::string path_to_str(const std::filesystem::path &path) {
+    std::u8string u8 = path.u8string();
+    return std::string(u8.begin(), u8.end());
 }
 
 // The function loads the audio to mono channel
-std::optional<vectorf> load_audio(const char *filename, int sampling_rate) {
+std::optional<vectorf> load_audio(const std::string &filename, int sampling_rate) {
     std::vector<int16_t> samples;
-    std::string input_filename = espace_string_for_ffmpeg(filename);
+    std::string input_filename = escape_string_for_ffmpeg(filename);
 
 #ifdef _WIN32
-    std::string cmd = deejai::utils::FFMPEG_PATH + " -i \"" + std::string(filename) +
+    char tempFolder[MAX_PATH];
+    DWORD len = GetTempPathA(MAX_PATH, tempFolder);
+    std::string fileName = "deej-ai-temp.txt";
+    std::string tempPath = std::string(tempFolder) + fileName;
+    std::ofstream tempFile(tempPath, std::ios::binary);
+    if (!tempFile) {
+        std::cerr << "Failed to create temp file!\n";
+        return std::nullopt;
+    }
+    tempFile << "file " << input_filename;
+    tempFile.close();
+
+    std::string cmd = deejai::utils::FFMPEG_PATH + " -f concat -safe 0 -i \"" + tempPath +
                       "\" -f s16le -acodec pcm_s16le -ac 1 -ar " +
                       std::to_string(sampling_rate) + " - 2>nul";
     FILE *pipe = _popen(cmd.c_str(), "rb");
@@ -85,20 +111,20 @@ std::optional<vectorf> load_audio(const char *filename, int sampling_rate) {
     return vec;
 }
 
-std::vector<std::filesystem::path> find_audio_files_recursively(const std::vector<std::string> &paths) {
+std::vector<std::string> find_audio_files_recursively(const std::vector<std::string> &paths) {
     auto hasAudioExtension = [](std::string filename) {
         std::transform(filename.begin(), filename.end(), filename.begin(), ::tolower);
         return filename.ends_with(".mp3") || filename.ends_with(".flac") || filename.ends_with(".m4a");
     };
 
-    std::vector<std::filesystem::path> results;
+    std::vector<std::string> results;
 
     for (const auto &pathStr : paths) {
         std::filesystem::path path(pathStr);
 
         if (std::filesystem::is_regular_file(path)) {
-            if (hasAudioExtension(path.string())) {
-                results.emplace_back(std::filesystem::absolute(path));
+            if (hasAudioExtension(path_to_str(path))) {
+                results.emplace_back(path_to_str(std::filesystem::absolute(path)));
             }
         }
 
@@ -108,8 +134,9 @@ std::vector<std::filesystem::path> find_audio_files_recursively(const std::vecto
                 if (!std::filesystem::is_regular_file(*it)) {
                     continue;
                 }
-                if (hasAudioExtension(it->path().string())) {
-                    results.emplace_back(std::filesystem::absolute(it->path()));
+                const std::string str = path_to_str(it->path());
+                if (hasAudioExtension(str)) {
+                    results.emplace_back(path_to_str(std::filesystem::absolute(it->path())));
                 }
             }
         }
@@ -135,7 +162,7 @@ static bool is_valid_leading_byte(unsigned char c) {
     return (c & 0xC0) != 0x80;
 }
 
-static std::string truncate_utf8(const std::string &input, size_t max_bytes) {
+static std::u8string truncate_utf8(const std::u8string &input, size_t max_bytes) {
     if (input.size() <= max_bytes)
         return input;
 
@@ -167,8 +194,8 @@ static std::string truncate_utf8(const std::string &input, size_t max_bytes) {
     return input.substr(i);
 }
 
-std::string scanned_filename(const std::string &path) {
-    std::string scanned_name = path + ".bin";
+std::u8string scanned_filename(const std::u8string &path) {
+    std::u8string scanned_name = path + u8".bin";
     std::replace(scanned_name.begin(), scanned_name.end(), '/', '_');
     std::replace(scanned_name.begin(), scanned_name.end(), '\\', '_');
     std::replace(scanned_name.begin(), scanned_name.end(), ':', '_');
@@ -230,11 +257,11 @@ matrixf load_matrix_from_stream(std::ifstream &ifs) {
     return mat;
 }
 
-bool save_matrix_map(const std::unordered_map<std::string, matrixf> &matrix_map, const std::string &filename) {
-    std::ofstream ofs(filename, std::ios::binary);
+bool save_matrix_map(const std::unordered_map<std::string, matrixf> &matrix_map, const std::filesystem::path &path) {
+    std::ofstream ofs(path, std::ios::binary);
 
     if (!ofs) {
-        std::cerr << "Failed to open file for writing " << filename << std::endl;
+        std::cerr << "Failed to open file for writing " << path << std::endl;
         return false;
     }
     uint32_t map_size = static_cast<uint32_t>(matrix_map.size());
@@ -250,10 +277,10 @@ bool save_matrix_map(const std::unordered_map<std::string, matrixf> &matrix_map,
     return true;
 }
 
-std::unordered_map<std::string, matrixf> load_matrix_map(const std::string &filename) {
-    std::ifstream ifs(filename, std::ios::binary);
+std::unordered_map<std::string, matrixf> load_matrix_map(const std::filesystem::path &path) {
+    std::ifstream ifs(path, std::ios::binary);
     if (!ifs) {
-        std::cerr << "Failed to open file for reading " << filename << std::endl;
+        std::cerr << "Failed to open file for reading " << path << std::endl;
         return {};
     }
     std::unordered_map<std::string, matrixf> matrix_map;

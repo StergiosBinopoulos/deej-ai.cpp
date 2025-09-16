@@ -46,7 +46,7 @@ class scanner {
     Ort::Env m_env;
     Ort::Session m_session;
 
-    std::string m_save_directory;
+    std::u8string m_save_directory;
 
     int m_batch_size = 100;
     double m_epsilon_distance = 0.001;

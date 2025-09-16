@@ -23,11 +23,12 @@ namespace deejai {
 scanner::scanner(const std::string &model_path, const std::string &save_directory) :
     m_env(ORT_LOGGING_LEVEL_WARNING, "ONNXModel"),
 #ifdef _WIN32
-    m_session(m_env, str_to_wstr(model_path).c_str(), session_options()),
+    m_session(m_env, str_to_wstr(model_path).c_str(), session_options())
 #else
-    m_session(m_env, model_path.c_str(), session_options()),
+    m_session(m_env, model_path.c_str(), session_options())
 #endif // _WIN32
-    m_save_directory(save_directory) {
+{
+    m_save_directory = std::u8string(save_directory.begin(), save_directory.end());
 }
 
 Ort::SessionOptions scanner::session_options() {
@@ -80,7 +81,7 @@ std::optional<audio_file_tensor> scanner::tensor_from_audio(const std::string &a
     const int n_mels = shape[2];
     const int slice_size = shape[3];
 
-    auto vec = utils::load_audio(audio_path.c_str(), sampling_rate);
+    auto vec = utils::load_audio(audio_path, sampling_rate);
     if (!vec.has_value()) {
         return std::nullopt;
     }
@@ -175,9 +176,11 @@ bool scanner::scan(const std::vector<std::string> &paths) {
     int files_scanned = 0;
     for (const auto &file : files) {
         current++;
-        std::filesystem::path vec_file = std::filesystem::path(m_save_directory) / utils::scanned_filename(file.string());
+        std::u8string u8 = std::u8string(file.begin(), file.end());
+        std::u8string scanned_filename = utils::scanned_filename(u8);
+        std::filesystem::path vec_file = std::filesystem::path(m_save_directory) / std::filesystem::path(scanned_filename);
         if (!(std::filesystem::exists(vec_file) && std::filesystem::is_regular_file(vec_file))) {
-            scan_file(file.string());
+            scan_file(file);
             if (files_scanned % 10 == 0) {
                 std::cout << "Scan progress: " << current << " / " << total_files << std::endl;
             }
@@ -189,7 +192,7 @@ bool scanner::scan(const std::vector<std::string> &paths) {
     std::unordered_map<std::string, matrixf> loaded_individual_vecs;
     for (const auto &entry : std::filesystem::directory_iterator(m_save_directory)) {
         if (entry.is_regular_file() && entry.path().extension() == ".bin") {
-            auto matrix_map = utils::load_matrix_map(entry.path().string());
+            auto matrix_map = utils::load_matrix_map(entry.path());
             for (const auto &[audio_path, matrix] : matrix_map) {
                 loaded_individual_vecs.emplace(audio_path, matrix);
             }
@@ -199,13 +202,14 @@ bool scanner::scan(const std::vector<std::string> &paths) {
     // load bundled vectors
     std::unordered_map<std::string, matrixf> loaded_bundled_vecs;
     if (std::filesystem::is_regular_file(bundled_vecs_path)) {
-        loaded_bundled_vecs = utils::load_matrix_map(bundled_vecs_path.string());
+        loaded_bundled_vecs = utils::load_matrix_map(bundled_vecs_path);
     }
     // append vectors from batches
     int start_batch = 1;
     if (std::filesystem::is_directory(bundled_dir)) {
         for (const auto &entry : std::filesystem::directory_iterator(bundled_dir)) {
-            const std::string filename = entry.path().string();
+            const std::u8string u8filename = entry.path().u8string();
+            const std::string filename = std::string(u8filename.begin(), u8filename.end());
             if (entry.is_regular_file() && is_batch_file(filename)) {
                 start_batch += 1;
                 auto vecs_batch = utils::load_matrix_map(filename);
@@ -297,13 +301,14 @@ bool scanner::scan(const std::vector<std::string> &paths) {
 
         const std::string batch_filename = std::string("batch_") + std::to_string(start_batch + batch) + ".bin";
         const std::filesystem::path batch_path = bundled_dir / batch_filename;
-        utils::save_matrix_map(batch_vec, batch_path.string());
+        utils::save_matrix_map(batch_vec, batch_path);
     }
 
-    const bool save_status = utils::save_matrix_map(loaded_bundled_vecs, bundled_vecs_path.string());
+    const bool save_status = utils::save_matrix_map(loaded_bundled_vecs, bundled_vecs_path);
     for (const auto &entry : std::filesystem::directory_iterator(bundled_dir)) {
         if (entry.is_regular_file()) {
-            std::string filename = entry.path().filename().string();
+            const std::u8string u8filename = entry.path().filename().u8string();
+            const std::string filename = std::string(u8filename.begin(), u8filename.end());
             if (is_batch_file(filename)) {
                 std::filesystem::remove(entry.path());
             }
@@ -320,12 +325,13 @@ void scanner::scan_file(const std::string &path) {
     std::vector<Ort::Value> prediction = predict(*tensor);
 
     if (!prediction.empty()) {
-        const std::string filename = utils::scanned_filename(path);
+        std::u8string u8path = std::u8string(path.begin(), path.end());
+        const std::u8string filename = utils::scanned_filename(u8path);
         const std::filesystem::path save_path = std::filesystem::path(m_save_directory) / filename;
 
         matrixf matrix = utils::ort_to_matrix(prediction[0]);
         std::unordered_map<std::string, matrixf> map = {{tensor->audio_path, matrix}};
-        utils::save_matrix_map(map, save_path.string());
+        utils::save_matrix_map(map, save_path);
     }
 }
 
@@ -333,7 +339,8 @@ void scanner::clean_deleted_items(std::unordered_map<std::string, matrixf> &audi
     for (auto it = audio_vecs.begin(); it != audio_vecs.end();) {
         const std::string &key = it->first;
         if (!std::filesystem::is_regular_file(key)) {
-            const auto path = std::filesystem::path(m_save_directory) / utils::scanned_filename(key);
+            std::u8string u8 = std::u8string(key.begin(), key.end());
+            const auto path = std::filesystem::path(m_save_directory) / utils::scanned_filename(u8);
             if (std::filesystem::exists(path)) {
                 std::filesystem::remove(path);
             }
