@@ -114,7 +114,7 @@ std::optional<vectorf> load_audio(const std::string &filename, int sampling_rate
 std::vector<std::string> find_audio_files_recursively(const std::vector<std::string> &paths) {
     auto hasAudioExtension = [](std::string filename) {
         std::transform(filename.begin(), filename.end(), filename.begin(), ::tolower);
-        return filename.ends_with(".mp3") || filename.ends_with(".flac") || filename.ends_with(".m4a");
+        return filename.ends_with(".mp3") || filename.ends_with(".flac") || filename.ends_with(".m4a") || filename.ends_with(".opus") || filename.ends_with(".aac");
     };
 
     std::vector<std::string> results;
