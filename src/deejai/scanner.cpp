@@ -174,17 +174,21 @@ bool scanner::scan(const std::vector<std::string> &paths) {
     const int total_files = files.size();
     int current = 0;
     int files_scanned = 0;
+#pragma omp parallel for schedule(dynamic)
     for (const auto &file : files) {
+#pragma omp atomic update
         current++;
         std::u8string u8 = std::u8string(file.begin(), file.end());
         std::u8string scanned_filename = utils::scanned_filename(u8);
         std::filesystem::path vec_file = std::filesystem::path(m_save_directory) / std::filesystem::path(scanned_filename);
         if (!(std::filesystem::exists(vec_file) && std::filesystem::is_regular_file(vec_file))) {
             scan_file(file);
-            if (files_scanned % 10 == 0) {
+            int last_file_scanned; 
+#pragma omp atomic capture
+            { last_file_scanned = files_scanned; files_scanned++; }
+            if (last_file_scanned % 10 == 0) {
                 std::cout << "Scan progress: " << current << " / " << total_files << std::endl;
             }
-            files_scanned++;
         }
     }
 
