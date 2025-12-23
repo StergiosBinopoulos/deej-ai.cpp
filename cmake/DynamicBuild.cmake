@@ -10,6 +10,8 @@ execute_process(
 
 include(cmake/FetchONNX.cmake)
 
+find_package(OpenMP COMPONENTS CXX)
+
 add_executable(deej-ai 
   src/main.cpp
   ${DEEJAI_SOURCES}
@@ -35,4 +37,5 @@ set_target_properties(deej-ai PROPERTIES
 target_link_libraries(deej-ai PRIVATE
     Eigen3::Eigen
     onnxruntime
+    OpenMP::OpenMP_CXX
 )
