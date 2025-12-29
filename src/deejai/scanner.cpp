@@ -4,6 +4,7 @@
 
 #include <Eigen/Dense>
 #include <filesystem>
+#include <mutex>
 #include <onnxruntime_cxx_api.h>
 #include <optional>
 #include <queue>
