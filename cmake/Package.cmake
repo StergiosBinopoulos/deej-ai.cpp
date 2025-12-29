@@ -1,5 +1,5 @@
 set(PACKAGES_DIR "${CMAKE_SOURCE_DIR}/package")
-set(APP_VERSION "0.2.5")
+set(APP_VERSION "0.2.6")
 
 set(PACKAGE_ARCH "")
 
