@@ -1,7 +1,5 @@
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
-find_package(OpenMP COMPONENTS CXX)
-
 set(ONNX_STATIC_DIR ${CMAKE_SOURCE_DIR}/onnxruntime-build/onnxruntime)
 add_executable(deej-ai 
     src/main.cpp
@@ -15,7 +13,6 @@ target_include_directories(deej-ai PRIVATE
 
 target_link_libraries(deej-ai PRIVATE
     Eigen3::Eigen
-    OpenMP::OpenMP_CXX
     ${CMAKE_SOURCE_DIR}/onnxruntime-build/output/static_lib/Release/lib/onnxruntime.lib
 )
 

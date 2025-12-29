@@ -1,6 +1,7 @@
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O3 -Wall -Wextra -Wpedantic -fno-omit-frame-pointer -fcolor-diagnostics")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3")
+set(CMAKE_BUILD_WITH_INSTALL_RPATH ON)
 
 execute_process(
     COMMAND ${CMAKE_COMMAND} -E copy
@@ -9,8 +10,6 @@ execute_process(
 )
 
 include(cmake/FetchONNX.cmake)
-
-find_package(OpenMP COMPONENTS CXX)
 
 add_executable(deej-ai 
   src/main.cpp
@@ -37,5 +36,4 @@ set_target_properties(deej-ai PROPERTIES
 target_link_libraries(deej-ai PRIVATE
     Eigen3::Eigen
     onnxruntime
-    OpenMP::OpenMP_CXX
 )
