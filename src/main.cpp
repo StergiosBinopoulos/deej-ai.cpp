@@ -98,6 +98,8 @@ int main(int argc, char *argv[]) {
                                     cxxopts::value<int>()->default_value("100"));
         options.add_options("Scan")("e,epsilon", "Epsilon value.",
                                     cxxopts::value<double>()->default_value("0.001"));
+        options.add_options("Scan")("j,jobs", "The maximum number of threads that should be used.",
+                                    cxxopts::value<int>()->default_value("-1"));
         options.add_options("Generate & Reorder")("i,input", "Input song path. This flag can be used multiple times.",
                                                   cxxopts::value<std::string>());
         options.add_options("Generate & Reorder")("o,m3u-out", "The m3u filepath to save the playlist. "
@@ -185,11 +187,12 @@ int main(int argc, char *argv[]) {
             std::string model = result["model"].as<std::string>();
             int batch_size = result["batch-size"].as<int>();
             double epsilon = result["epsilon"].as<double>();
+            int jobs = result["jobs"].as<int>();
 
             deejai::scanner deejai_scanner(model, vec_dir);
             deejai_scanner.set_batch_size(batch_size);
             deejai_scanner.set_epsilon(epsilon);
-            if (deejai_scanner.scan(scan_inputs)) {
+            if (deejai_scanner.scan(scan_inputs, jobs)) {
                 std::cout << "Scan completed successfully." << std::endl;
             }
         }

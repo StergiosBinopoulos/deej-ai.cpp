@@ -25,7 +25,7 @@ class scanner {
     scanner(scanner &&) = default;
     scanner &operator=(scanner &&) = default;
 
-    bool scan(const std::vector<std::string> &paths);
+    bool scan(const std::vector<std::string> &paths, int jobs = -1);
     std::vector<Ort::Value> predict(const audio_file_tensor &input_tensor);
 
     std::vector<int64_t> input_shape() const;

@@ -1,6 +1,5 @@
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
-
 set(ONNX_STATIC_DIR ${CMAKE_SOURCE_DIR}/onnxruntime-build/onnxruntime)
 add_executable(deej-ai 
     src/main.cpp

@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <onnxruntime_cxx_api.h>
 #include <optional>
+#include <queue>
 #include <string>
 #include <unordered_map>
 #include <unsupported/Eigen/CXX11/Tensor>
@@ -149,7 +150,7 @@ double scanner::epsilon() const {
     return m_epsilon_distance;
 }
 
-bool scanner::scan(const std::vector<std::string> &paths) {
+bool scanner::scan(const std::vector<std::string> &paths, int jobs) {
     const std::filesystem::path bundled_dir = std::filesystem::path(m_save_directory) / BUNDLED_VECS_DIRNAME;
     const std::filesystem::path bundled_vecs_path = bundled_dir / BUNDLED_VECS_FILENAME;
 
@@ -172,20 +173,47 @@ bool scanner::scan(const std::vector<std::string> &paths) {
     }
 
     const int total_files = files.size();
-    int current = 0;
-    int files_scanned = 0;
-    for (const auto &file : files) {
-        current++;
-        std::u8string u8 = std::u8string(file.begin(), file.end());
+    std::mutex scan_mutex;
+    std::atomic<int> current{0};
+    auto scan_worker_fun = [&](const std::string &file) {
+        int value = current.fetch_add(1, std::memory_order_relaxed) + 1;
+        std::u8string u8(file.begin(), file.end());
         std::u8string scanned_filename = utils::scanned_filename(u8);
         std::filesystem::path vec_file = std::filesystem::path(m_save_directory) / std::filesystem::path(scanned_filename);
         if (!(std::filesystem::exists(vec_file) && std::filesystem::is_regular_file(vec_file))) {
             scan_file(file);
-            if (files_scanned % 10 == 0) {
-                std::cout << "Scan progress: " << current << " / " << total_files << std::endl;
+            {
+                std::lock_guard<std::mutex> lock(scan_mutex);
+                if (value % 10 == 0) {
+                    std::cout << "Scan progress: " << value << " / " << total_files << std::endl;
+                }
             }
-            files_scanned++;
         }
+    };
+
+    size_t max_concurrent = std::thread::hardware_concurrency();
+    if (max_concurrent <= 0) {
+        max_concurrent = 1;
+    }
+
+    if (jobs != -1 && jobs > 0) {
+        max_concurrent = std::min(max_concurrent, static_cast<size_t>(jobs));
+    }
+
+    std::queue<std::thread> threads;
+    for (const auto &file : files) {
+        if (threads.size() >= max_concurrent) {
+            threads.front().join();
+            threads.pop();
+        }
+
+        threads.emplace(scan_worker_fun, file);
+    }
+
+    // Join remaining threads
+    while (!threads.empty()) {
+        threads.front().join();
+        threads.pop();
     }
 
     // load individual file vectors

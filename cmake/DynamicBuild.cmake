@@ -1,6 +1,7 @@
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O3 -Wall -Wextra -Wpedantic -fno-omit-frame-pointer -fcolor-diagnostics")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3")
+set(CMAKE_BUILD_WITH_INSTALL_RPATH ON)
 
 execute_process(
     COMMAND ${CMAKE_COMMAND} -E copy
