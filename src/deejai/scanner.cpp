@@ -367,8 +367,8 @@ void scanner::scan_file(const std::string &path) {
 void scanner::clean_deleted_items(std::unordered_map<std::string, matrixf> &audio_vecs) const {
     for (auto it = audio_vecs.begin(); it != audio_vecs.end();) {
         const std::string &key = it->first;
-        if (!std::filesystem::is_regular_file(key)) {
-            std::u8string u8 = std::u8string(key.begin(), key.end());
+        std::u8string u8 = std::u8string(key.begin(), key.end());
+        if (!std::filesystem::is_regular_file(u8)) {
             const auto path = std::filesystem::path(m_save_directory) / utils::scanned_filename(u8);
             if (std::filesystem::exists(path)) {
                 std::filesystem::remove(path);
